@@ -37,7 +37,7 @@ jobs:
     - name: 创建图标文件
       run: |
         # 检查图标文件是否存在
-        if (Test-Path "icon.png") {
+        if (Test-Path "icon.ico") {
           Write-Host "找到 icon.png 文件"
         } else {
           Write-Host "未找到 icon.png，使用默认图标"
@@ -58,7 +58,7 @@ jobs:
           --distpath "dist" `
           --workpath "build" `
           --specpath "." `
-          --icon="icon.png" `
+          --icon="icon.ico" `
           --add-data "view;view" `
           --add-data "source;source" `
           --add-data "logo.png;." `
