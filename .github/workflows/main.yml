@@ -6,7 +6,7 @@ on:
       version:
         description: '版本号 (例如: 1.0.0)'
         required: true
-        default: '1.0.0'
+        default: '0.6'
 
 jobs:
   build-windows:
@@ -37,10 +37,10 @@ jobs:
     - name: 创建图标文件
       run: |
         # 检查图标文件是否存在
-        if (Test-Path "icon.ico") {
-          Write-Host "找到 icon.ico 文件"
+        if (Test-Path "logo.ico") {
+          Write-Host "找到 logo.png 文件"
         } else {
-          Write-Host "未找到 icon.ico，使用默认图标"
+          Write-Host "未找到 logo.png，使用默认图标"
         }
         
     - name: 使用PyInstaller打包
@@ -58,11 +58,10 @@ jobs:
           --distpath "dist" `
           --workpath "build" `
           --specpath "." `
-          --icon="icon.ico" `
+          --icon="logo.ico" `
           --add-data "view;view" `
           --add-data "source;source" `
           --add-data "logo.png;." `
-          --add-data "icon.ico;." `
           --add-data "main.pro;." `
           main.py
           

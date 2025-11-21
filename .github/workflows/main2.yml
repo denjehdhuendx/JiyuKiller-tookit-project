@@ -1,0 +1,72 @@
+name: Build ITLT for Windows (No Release)
+
+on:
+  push:
+    tags:
+      - 'v*'  # 触发条件：推送 v1.0.0 标签
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Create and activate virtual environment
+        run: |
+          python -m venv .venv
+          .venv\Scripts\activate
+          pip install --upgrade pip
+
+      - name: Install dependencies with custom QFluentWidgets
+        run: |
+          .venv\Scripts\activate
+          pip install pyinstaller pyqt5
+          pip install "PyQt-Fluent-Widgets[full]" -i https://pypi.org/simple/
+
+      - name: Extract version from main.pro
+        id: version
+        run: |
+          $version = Get-Content main.pro | Select-String '^VERSION *=' | ForEach-Object { $_ -replace '.*= *', '' } | ForEach-Object { $_.Trim() }
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Build with PyInstaller
+        run: |
+          .venv\Scripts\activate
+          pyinstaller ^
+            --name=itlt ^
+            --windowed ^
+            --icon=logo.ico ^  # ✅ 直接使用 .ico 文件
+            --onefile ^
+            --add-data "pages;pages" ^
+            --add-data "components;components" ^
+            --add-data "common;common" ^
+            --add-data "source;source" ^
+            --clean ^
+            main.py
+
+      - name: Rename dist folder and zip
+        run: |
+          $version = $env:VERSION
+          if (!$version) {
+            throw "Version not found in main.pro!"
+          }
+          $newName = "itlt-$version"
+          Move-Item "dist\itlt.exe" "$newName\itlt.exe"
+          Copy-Item -Recurse "pages" "$newName\pages"
+          Copy-Item -Recurse "components" "$newName\components"
+          Copy-Item -Recurse "common" "$newName\common"
+          Copy-Item -Recurse "source" "$newName\source"
+          Compress-Archive -Path "$newName" -DestinationPath "$newName.zip" -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: itlt-${{ env.VERSION }}
+          path: itlt-${{ env.VERSION }}.zip
+          retention-days: 7
