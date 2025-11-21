@@ -1,0 +1,98 @@
+name: Build ITLToolkit
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: 创建虚拟环境
+      run: |
+        python -m venv .venv
+        .venv\Scripts\activate
+        
+    - name: 安装依赖
+      run: |
+        .venv\Scripts\activate
+        pip install --upgrade pip
+        pip install "PyQt-Fluent-Widgets[full]" -i https://pypi.org/simple/
+        pip install pyinstaller
+        pip install pyqt5
+        
+    - name: 创建图标文件
+      run: |
+        # 检查图标文件是否存在
+        if (Test-Path "icon.png") {
+          Write-Host "找到 icon.png 文件"
+        } else {
+          Write-Host "未找到 icon.png，使用默认图标"
+        }
+        
+    - name: 使用PyInstaller打包
+      run: |
+        .venv\Scripts\activate
+        $version = "${{ github.event.inputs.version }}"
+        $projectName = "itlt"
+        $outputName = "$projectName-$version"
+        
+        # PyInstaller打包命令
+        pyinstaller `
+          --onefile `
+          --windowed `
+          --name "$outputName" `
+          --distpath "dist" `
+          --workpath "build" `
+          --specpath "." `
+          --icon="icon.png" `
+          --add-data "view;view" `
+          --add-data "source;source" `
+          --add-data "logo.png;." `
+          --add-data "main.pro;." `
+          main.py
+          
+    - name: 重命名dist文件夹
+      run: |
+        $version = "${{ github.event.inputs.version }}"
+        $projectName = "itlt"
+        $folderName = "$projectName-$version"
+        
+        if (Test-Path "dist") {
+          Rename-Item "dist" $folderName
+        }
+        
+    - name: 创建ZIP压缩包
+      run: |
+        $version = "${{ github.event.inputs.version }}"
+        $projectName = "itlt"
+        $folderName = "$projectName-$version"
+        $zipName = "$folderName.zip"
+        
+        Compress-Archive -Path $folderName -DestinationPath $zipName
+        
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: itlt-${{ github.event.inputs.version }}
+        path: itlt-${{ github.event.inputs.version }}.zip
+        
+    - name: 显示构建信息
+      run: |
+        Write-Host "✅ 构建完成！"
+        Write-Host "版本号: ${{ github.event.inputs.version }}"
+        Write-Host "文件名: itlt-${{ github.event.inputs.version }}.zip"
+        Write-Host "文件大小: $((Get-Item itlt-${{ github.event.inputs.version }}.zip).Length / 1MB) MB"
