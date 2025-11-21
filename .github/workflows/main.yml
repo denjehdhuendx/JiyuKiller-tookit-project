@@ -1,60 +1,44 @@
-name: Build ITLT
+name: Build and Package ITL Toolkit
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'The version of the package'
-        required: true
-        default: '1.0.0'
 
 jobs:
   build:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: [3.8, 3.9, 3.10]
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v3
       with:
-        python-version: ${{ matrix.python-version }}
-
+        python-version: '3.13'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pyqt5 pyinstaller
-        pip install "PyQt-Fluent-Widgets[full]" -i https://pypi.org/simple
-
-    - name: Set up virtual environment
+        pip install pyqt5 pyinstaller PyQt5
+        pip install "PyQtFluent-Widgets[full]" -i https://pypi.org/simple
+    - name: Create virtual environment
       run: python -m venv .venv
-
     - name: Activate virtual environment
       run: |
-        source .venv/bin/activate
-        pip install -r requirements.txt
-
-    - name: Build package
-      run: pyinstaller --windowed main.py -i icon.png --dist dist --onefile itlt-${{ inputs.version }}.zip
-
-    - name: Create Release
-      uses: actions/create-release@v1
+        .\.venv\Scripts\activate
+    - name: Build application
+      run: |
+        python main.py build
+    - name: Package application
+      run: |
+        pyinstaller -i main.spec -d dist -p dist
+    - name: Create zip package
+      run: |
+        cd dist
+        7z ..\itl.zip itl-*.exe
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ inputs.version }}
-        draft: false
-        prerelease: false
+        name: ITL Toolkit Package
+        path: dist\itl.zip
 
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_path: ./dist/itlt-${{ inputs.version }}.zip
-        asset_name: itlt-${{ inputs.version }}.zip
-        asset_content_type: application/zip
